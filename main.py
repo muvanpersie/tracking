@@ -20,26 +20,15 @@ import os
 from keras.utils import multi_gpu_model
 
 class YOLO(object):
-    _defaults = {
-        "model_path": 'model_data/yolov3.h5',
-        "anchors_path": 'model_data/yolo_anchors.txt',
-        "classes_path": 'model_data/coco_classes.txt',
-        "score" : 0.3,
-        "iou" : 0.45,
-        "model_image_size" : (416, 416),
-        "gpu_num" : 1,
-    }
-
-    @classmethod
-    def get_defaults(cls, n):
-        if n in cls._defaults:
-            return cls._defaults[n]
-        else:
-            return "Unrecognized attribute name '" + n + "'"
 
     def __init__(self, **kwargs):
-        self.__dict__.update(self._defaults) # set up default values
-        self.__dict__.update(kwargs) # and update with user overrides
+        self.model_path = 'models/yolov3.h5'
+        self.anchors_path = 'models/yolo_anchors.txt'
+        self.classes_path = 'models/coco_classes.txt'
+        self.score = 0.3
+        self.iou = 0.45
+        self.model_image_size = (416, 416)
+        self.gpu_num = 1,
         self.class_names = self._get_class()
         self.anchors = self._get_anchors()
         self.sess = K.get_session()
@@ -101,8 +90,10 @@ class YOLO(object):
         return boxes, scores, classes
 
     def detect_image(self, image):
-        start = timer()
+        #start = timer()   # 获取当前时刻
         centers=[]
+
+        #边长必须是32的整数倍
         if self.model_image_size != (None, None):
             assert self.model_image_size[0]%32 == 0, 'Multiples of 32 required'
             assert self.model_image_size[1]%32 == 0, 'Multiples of 32 required'
@@ -183,23 +174,28 @@ def detect_video(yolo, video_path, output_path=""):
     vid = cv2.VideoCapture(video_path)
     if not vid.isOpened():
         raise IOError("Couldn't open webcam or video")
+
     video_FourCC    = int(vid.get(cv2.CAP_PROP_FOURCC))
     video_fps       = vid.get(cv2.CAP_PROP_FPS)
     video_size      = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)),
                         int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+    
     isOutput = True if output_path != "" else False
     if isOutput:
         out = cv2.VideoWriter(output_path, video_FourCC, video_fps, video_size)
+    
     accum_time = 0
     curr_fps = 0
-    fps = "FPS: ??"
     prev_time = timer()
-    tracker = Tracker(160, 30, 6, 100)
+    
     # Variables initialization
     track_colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
                     (0, 255, 255), (255, 0, 255), (255, 127, 255),
                     (127, 0, 255), (127, 0, 127)]
     
+    # 初始化一个tracker， 用来管理Tracks
+    tracker = Tracker(160, 30, 6, 100)
+
     while True:
         # 读取视频文件，得到每一帧图像
         return_value, frame = vid.read()
@@ -226,8 +222,7 @@ def detect_video(yolo, video_path, output_path=""):
             # Track object using Kalman Filter
             tracker.Update(centers)
 
-            # For identified object tracks draw tracking line
-            # Use various colors to indicate different track_id
+            # 画出跟踪轨迹
             for i in range(len(tracker.tracks)):
                 if (len(tracker.tracks[i].trace) > 1):
                     for j in range(len(tracker.tracks[i].trace) - 1):
@@ -238,14 +233,11 @@ def detect_video(yolo, video_path, output_path=""):
                         y2 = tracker.tracks[i].trace[j + 1][1][0]
 
                         clr = tracker.tracks[i].track_id % 9
-                        cv2.line(result, (int(x1), int(y1)), (int(x2), int(y2)),
-                                 track_colors[clr], 4)
-                        #x3 = tracker.tracks[i].track_id
-                        #cv2.putText(result,str(tracker.tracks[j].track_id),(int(x1),int(y1)),font,track_colors[j],3)
-                        #cv2.circle(result,(int(x1),int(y1)),3,track_colors[j],3)
+                        cv2.line(result, (int(x1), int(y1)), (int(x2), int(y2)), track_colors[clr], 4)
+
             # Display the resulting tracking frame
             cv2.imshow('Tracking', result)
-            ###################################################
+
         cv2.namedWindow("result", cv2.WINDOW_NORMAL)
         cv2.imshow("result", result)
         if isOutput:
@@ -253,5 +245,12 @@ def detect_video(yolo, video_path, output_path=""):
         if cv2.waitKey(100) & 0xFF == ord('q'):
             break
     yolo.close_session()
+
+if __name__ == "__main__":
+    video_path = './test.avi'
+    # 创建yolo检测器
+    yolo = YOLO()
+
+    detect_video(yolo, video_path)
 
 

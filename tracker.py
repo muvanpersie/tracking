@@ -40,8 +40,7 @@ class Tracker(object):
         None
     """
 
-    def __init__(self, dist_thresh, max_frames_to_skip, max_trace_length,
-                 trackIdCount):
+    def __init__(self, dist_thresh, max_frames_to_skip, max_trace_length, trackIdCount):
         """Initialize variable used by Tracker class
         Args:
             dist_thresh: distance threshold. When exceeds the threshold,

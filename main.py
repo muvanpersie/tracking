@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*-coding=utf-8-*-
 """
 Class definition of YOLO_v3 style detection model on image and video
 """
@@ -235,7 +235,6 @@ def detect_video(yolo, video_path, output_path=""):
                         clr = tracker.tracks[i].track_id % 9
                         cv2.line(result, (int(x1), int(y1)), (int(x2), int(y2)), track_colors[clr], 4)
 
-            # Display the resulting tracking frame
             cv2.imshow('Tracking', result)
 
         cv2.namedWindow("result", cv2.WINDOW_NORMAL)
@@ -244,13 +243,84 @@ def detect_video(yolo, video_path, output_path=""):
             out.write(result)
         if cv2.waitKey(100) & 0xFF == ord('q'):
             break
+
+    yolo.close_session()
+
+def detect_img_series(yolo, img_path, output_path=""):
+    imgs = os.listdir(img_path)
+    imgs.sort(key=lambda x:int(x[:-4])) # 按照名字进行排序
+
+    
+    accum_time = 0
+    curr_fps = 0
+    prev_time = timer()
+    
+    # Variables initialization
+    track_colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
+                    (0, 255, 255), (255, 0, 255), (255, 127, 255),
+                    (127, 0, 255), (127, 0, 127)]
+    
+    # 初始化一个tracker， 用来管理Tracks
+    tracker = Tracker(160, 30, 6, 100)
+
+    for img in imgs:
+        image = cv2.imread(img_path+'/'+img)
+        image = Image.fromarray(image)
+
+        # 利用yolo检测
+        image,centers,number = yolo.detect_image(image)
+        result = np.asarray(image)
+
+        curr_time = timer()  #获取当前时刻时间
+        exec_time = curr_time - prev_time
+        prev_time = curr_time
+        accum_time = accum_time + exec_time
+        curr_fps = curr_fps + 1
+        if accum_time > 1:
+            accum_time = accum_time - 1
+            fps = "FPS: " + str(curr_fps)
+            curr_fps = 0
+            
+        cv2.putText(result, str(number), (20,  40), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 5)
+     
+        if (len(centers) > 0):
+
+            # Track object using Kalman Filter
+            tracker.Update(centers)
+
+            # 画出跟踪轨迹
+            for i in range(len(tracker.tracks)):
+                if (len(tracker.tracks[i].trace) > 1):
+                    for j in range(len(tracker.tracks[i].trace) - 1):
+                        # Draw trace line
+                        x1 = tracker.tracks[i].trace[j][0][0]
+                        y1 = tracker.tracks[i].trace[j][1][0]
+                        x2 = tracker.tracks[i].trace[j + 1][0][0]
+                        y2 = tracker.tracks[i].trace[j + 1][1][0]
+
+                        clr = tracker.tracks[i].track_id % 9
+                        cv2.line(result, (int(x1), int(y1)), (int(x2), int(y2)), track_colors[clr], 4)
+
+            cv2.imshow('Tracking', result)
+
+        cv2.namedWindow("result", cv2.WINDOW_NORMAL)
+        cv2.imshow("result", result)
+        if isOutput:
+            out.write(result)
+        if cv2.waitKey(100) & 0xFF == ord('q'):
+            break
+
     yolo.close_session()
 
 if __name__ == "__main__":
-    video_path = './test.avi'
+    
     # 创建yolo检测器
     yolo = YOLO()
 
-    detect_video(yolo, video_path)
+    #video_path = './test.avi'
+    #detect_video(yolo, video_path)
+
+    img_series_path = '/home/lance/data/data/MOT17Det/train/MOT17-02/img1'
+    detect_img_series(yolo, img_series_path)
 
 

@@ -1,15 +1,7 @@
-'''
-    File name         : tracker.py
-    File Description  : Tracker Using Kalman Filter & Hungarian Algorithm
-    Date created      : 07/14/2017
-    Date last modified: 07/16/2017
-    Python Version    : 2.7
-'''
+# -*- coding=utf-8 -*-
 
-# Import python libraries
 import numpy as np
 from kalman_filter import KalmanFilter
-from common import dprint
 from scipy.optimize import linear_sum_assignment
 
 
@@ -130,8 +122,6 @@ class Tracker(object):
                 if id < len(self.tracks):
                     del self.tracks[id]
                     del assignment[id]
-                else:
-                    dprint("ERROR: id is greater than length of tracks")
 
         # Now look for un_assigned detects
         un_assigned_detects = []

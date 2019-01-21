@@ -27,8 +27,8 @@ class YOLO(object):
         self.classes_path = 'models/coco_classes.txt'
         self.score = 0.3
         self.iou = 0.45
-        self.model_image_size = (416, 416)
-        self.gpu_num = 1,
+        self.model_image_size = (640, 640)
+        self.gpu_num = 1
         self.class_names = self._get_class()
         self.anchors = self._get_anchors()
         self.sess = K.get_session()
@@ -73,24 +73,23 @@ class YOLO(object):
         hsv_tuples = [(x / len(self.class_names), 1., 1.)
                       for x in range(len(self.class_names))]
         self.colors = list(map(lambda x: colorsys.hsv_to_rgb(*x), hsv_tuples))
-        self.colors = list(
-            map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)),
-                self.colors))
+        self.colors = list(map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)), self.colors))
         np.random.seed(10101)  # Fixed seed for consistent colors across runs.
         np.random.shuffle(self.colors)  # Shuffle colors to decorrelate adjacent classes.
         np.random.seed(None)  # Reset seed to default.
-
+        
         # Generate output tensor targets for filtered bounding boxes.
         self.input_image_shape = K.placeholder(shape=(2, ))
-        if self.gpu_num>=2:
+        if self.gpu_num >= 2:
             self.yolo_model = multi_gpu_model(self.yolo_model, gpus=self.gpu_num)
+
         boxes, scores, classes = yolo_eval(self.yolo_model.output, self.anchors,
                 len(self.class_names), self.input_image_shape,
                 score_threshold=self.score, iou_threshold=self.iou)
+
         return boxes, scores, classes
 
     def detect_image(self, image):
-        #start = timer()   # 获取当前时刻
         centers=[]
 
         #边长必须是32的整数倍
@@ -99,12 +98,11 @@ class YOLO(object):
             assert self.model_image_size[1]%32 == 0, 'Multiples of 32 required'
             boxed_image = letterbox_image(image, tuple(reversed(self.model_image_size)))
         else:
-            new_image_size = (image.width - (image.width % 32),
-                              image.height - (image.height % 32))
+            new_image_size = (image.width - (image.width % 32), image.height - (image.height % 32))
             boxed_image = letterbox_image(image, new_image_size)
+
         image_data = np.array(boxed_image, dtype='float32')
 
-        #print(image_data.shape)
         image_data /= 255.
         image_data = np.expand_dims(image_data, 0)  # Add batch dimension.
 
@@ -116,10 +114,7 @@ class YOLO(object):
                 K.learning_phase(): 0
             })
 
-        #print('Found {} boxes for {}'.format(len(out_boxes), 'img'))
-
-        font = ImageFont.truetype(font='font/FiraMono-Medium.otf',
-                    size=np.floor(3e-2 * image.size[1] + 0.5).astype('int32'))
+        font = ImageFont.truetype(font='font/FiraMono-Medium.otf', size=np.floor(3e-2 * image.size[1] + 0.5).astype('int32'))
         thickness = (image.size[0] + image.size[1]) // 300
 
         for i, c in reversed(list(enumerate(out_classes))):
@@ -140,7 +135,6 @@ class YOLO(object):
                 left = max(0, np.floor(left + 0.5).astype('int32'))
                 bottom = min(image.size[1], np.floor(bottom + 0.5).astype('int32'))
                 right = min(image.size[0], np.floor(right + 0.5).astype('int32'))
-                #print(label, (left, top), (right, bottom))
 
                 if top - label_size[1] >= 0:
                     text_origin = np.array([left, top - label_size[1]])
@@ -149,21 +143,13 @@ class YOLO(object):
 
             # My kingdom for a good redistributable image drawing library.
                 for i in range(thickness):
-                    draw.rectangle(
-                        [left + i, top + i, right - i, bottom - i],
-                        outline=self.colors[c])
-                draw.rectangle(
-                    [tuple(text_origin), tuple(text_origin + label_size)],
-                    fill=self.colors[c])
-                #draw.rectangle(
-                    #[tuple(text_origin), tuple(text_origin + label_size)],
-                    #fill=self.colors[c])
+                    draw.rectangle([left + i, top + i, right - i, bottom - i], outline=self.colors[c])
+
+                draw.rectangle([tuple(text_origin), tuple(text_origin + label_size)], fill=self.colors[c])
                 draw.text(text_origin, label, fill=(0, 0, 0), font=font)
 
                 del draw
 
-        end = timer()
-        #print(end - start)
         return image,centers,number
 
     def close_session(self):
@@ -305,8 +291,8 @@ def detect_img_series(yolo, img_path, output_path=""):
 
         cv2.namedWindow("result", cv2.WINDOW_NORMAL)
         cv2.imshow("result", result)
-        if isOutput:
-            out.write(result)
+        #if isOutput:
+        #    out.write(result)
         if cv2.waitKey(100) & 0xFF == ord('q'):
             break
 

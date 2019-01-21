@@ -20,12 +20,8 @@ class KalmanFilter(object):
     """
 
     def __init__(self):
-        """Initialize variable used by Kalman Filter class
-        Args:
-            None
-        Return:
-            None
-        """
+        """Initialize variable used by Kalman Filter class"""
+        
         self.dt = 0.005  # delta time
 
         self.A = np.array([[1, 0], [0, 1]])  # matrix in observation equations
